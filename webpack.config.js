@@ -1,20 +1,17 @@
 'use strict';
-var path = require('paht');
+var path = require('path');
 var webpack = require('webpack');
 
 module.exports = {
-  //entry
-  entry: [
-    //React client-side app
-    './src/app.js'
-  ],
+  context: __dirname + '/src',
+  entry: 'app',
   module: {
     loaders: [
       { test: /.js$/, loaders: ['babel-loader'], exclude: /node_modules/ }
     ]
   },
   output: {
-    path: path.join(__dirname, './build'),
+    path: path.join(__dirname, './public/js'),
     filename: 'app.js'
   },
   resolve: {
