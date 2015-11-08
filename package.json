@@ -1,0 +1,31 @@
+{
+  "name": "redflow-universal",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "keywords": [
+    "redflow",
+    "react",
+    "universal",
+    "javascript",
+    "spa"
+  ],
+  "author": "Carlos de la Orden <cdelaorden@gmail.com>",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.14.1",
+    "express": "^4.13.3",
+    "knex": "^0.9.0",
+    "method-override": "^2.3.5",
+    "passport": "^0.3.0",
+    "react": "^0.14.2",
+    "react-dom": "^0.14.2"
+  }
+}
