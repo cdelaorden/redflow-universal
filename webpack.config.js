@@ -3,18 +3,26 @@ var path = require('path');
 var webpack = require('webpack');
 
 module.exports = {
-  context: __dirname + '/src',
-  entry: 'app',
+  entry: './src/app',
   module: {
     loaders: [
-      { test: /.js$/, loaders: ['babel-loader'], exclude: /node_modules/ }
-    ]
+      {
+        test: /\.js$/,
+        loader: 'babel',
+        exclude: /(node_modules|bower_components)/,
+        query: {
+          // https://github.com/babel/babel-loader#options
+          cacheDirectory: true,
+          presets: ['es2015', 'react']
+        }
+      }
+    ],
   },
   output: {
-    path: path.join(__dirname, './public/js'),
+    path: path.join(__dirname, './src/public/js'),
     filename: 'app.js'
   },
   resolve: {
-    extensions: ['.js']
+    extensions: ['', '.js']
   }
-}
+};

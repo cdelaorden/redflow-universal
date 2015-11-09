@@ -1,8 +1,12 @@
-import Todos from './todos';
+import Contacts from './contacts';
 
-const apiRoutes = {
-  //TODOS
-  '/api/todos': Todos.getTodos
+const apiRoutes = function(router){
+
+  Contacts.attachRoutes(router);
+  //rest of API modules...
+
+  return router;
+
 };
 
 export default apiRoutes;
