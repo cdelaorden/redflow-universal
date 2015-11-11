@@ -20,16 +20,16 @@ class Atom {
 
   }
 
-  set(keyPath, val){
+  set(keyPath, val, options = { silent: false }){
     if(typeof(val)==='function'){
       this.__state = m.updateIn(this.__state, keyPath, val);
     }
     else {
       this.__state = m.assocIn(this.__state, keyPath, val);
     }
-
-    this.__notifyChange();
-
+    if(!options.silent){
+      this.__notifyChange();
+    }
   }
 
   get(){

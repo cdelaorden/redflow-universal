@@ -43,7 +43,7 @@ const httpApi = {
   put: function(url, data){
     console.log('PUT', url, data);
     return new Promise((resolve,reject) => {
-      request(getApiUrl(url))
+      request.put(getApiUrl(url))
       .send(ensureJs(data))
       .end((err,res) => {
         return err ? reject(err): resolve(res.body)

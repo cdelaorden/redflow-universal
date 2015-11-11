@@ -8,7 +8,9 @@ module.exports = {
   ui: {
     contacts: {
       isEditing: false,
-      editErrors: {}
+      editErrors: {},
+      lastListFetch: 0,
+      lastDetailFetch: 0
     }
   },
   route: {

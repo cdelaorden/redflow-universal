@@ -19,7 +19,9 @@ export default class ContactView extends Component {
           Last: { m.get(contact, 'last')}<br />
           Email: { m.get(contact, 'email')}
         </p>
-        <Link url='/contacts'>Go back</Link> | <Link url={ '/contacts/' + m.get(contact, 'id') + '/edit'}>Edit</Link>
+        <Link url='/contacts'>Go back</Link> |
+        <Link url={ '/contacts/' + m.get(contact, 'id') + '/edit'}>Edit</Link> |
+        <Link url={ '/contacts/' + m.get(contact, 'id') + '/delete'}>Delete</Link>
       </div>
 
     )

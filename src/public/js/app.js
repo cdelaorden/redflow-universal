@@ -10610,13 +10610,16 @@
 	  }, {
 	    key: 'set',
 	    value: function set(keyPath, val) {
+	      var options = arguments.length <= 2 || arguments[2] === undefined ? { silent: false } : arguments[2];
+
 	      if (typeof val === 'function') {
 	        this.__state = _mori2.default.updateIn(this.__state, keyPath, val);
 	      } else {
 	        this.__state = _mori2.default.assocIn(this.__state, keyPath, val);
 	      }
-
-	      this.__notifyChange();
+	      if (!options.silent) {
+	        this.__notifyChange();
+	      }
 	    }
 	  }, {
 	    key: 'get',
@@ -20179,7 +20182,9 @@
 	  ui: {
 	    contacts: {
 	      isEditing: false,
-	      editErrors: {}
+	      editErrors: {},
+	      lastListFetch: 0,
+	      lastDetailFetch: 0
 	    }
 	  },
 	  route: {
@@ -20964,6 +20969,10 @@
 	    dispatcher.emit(_action_types.CONTACTS_LOAD_ONE, { contactId: contactId, next: next });
 	  }
 
+	  function createContact(next) {
+	    dispatcher.emit(_action_types.CONTACTS_CREATE, { next: next });
+	  }
+
 	  function setPage(page) {
 	    //we use rest params because this setPage could be passed route parameters
 
@@ -20972,20 +20981,21 @@
 	        rest[_key] = arguments[_key];
 	      }
 
-	      console.log('SetPage', page, rest);
 	      var next = Array.isArray(rest) ? rest[rest.length - 1] : noop;
 	      dispatcher.emit(_action_types.ROUTE_SET, { page: page, next: next });
-	      //if(IS_SERVER) next();
 	    };
 	  }
 
 	  return {
-	    '/contacts/create': [setPage('contact_create')],
+	    //contacts
+	    '/contacts/create': [createContact, setPage('contact_create')],
 	    '/contacts/:id': [loadContactById, setPage('contact_view')],
 	    '/contacts/:id/edit': [loadContactById, setPage('contact_edit')],
 	    '/contacts/:id/delete': [loadContactById, setPage('contact_delete')],
 	    '/contacts': [loadContacts, setPage('contact_list')],
-	    '/': [loadContacts, setPage('contact_list')]
+	    '/': [loadContacts, setPage('contact_list')],
+	    //not found
+	    '*': [setPage('not_found')]
 	  };
 	};
 
@@ -21051,7 +21061,7 @@
 	  put: function put(url, data) {
 	    console.log('PUT', url, data);
 	    return new Promise(function (resolve, reject) {
-	      (0, _superagent2.default)(getApiUrl(url)).send(ensureJs(data)).end(function (err, res) {
+	      _superagent2.default.put(getApiUrl(url)).send(ensureJs(data)).end(function (err, res) {
 	        return err ? reject(err) : resolve(res.body);
 	      });
 	    });
@@ -22459,9 +22469,7 @@
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	function navigate(_ref) {
-	  var url = _ref.url;
-
+	function navigate(url) {
 	  _dispatcher2.default.emit(_action_types.NAVIGATE, { url: url });
 	}
 
@@ -22485,6 +22493,10 @@
 	var _list_item = __webpack_require__(181);
 
 	var _list_item2 = _interopRequireDefault(_list_item);
+
+	var _link = __webpack_require__(182);
+
+	var _link2 = _interopRequireDefault(_link);
 
 	var _stores = __webpack_require__(162);
 
@@ -22526,6 +22538,11 @@
 	        'div',
 	        null,
 	        _react2.default.createElement(
+	          _link2.default,
+	          { url: '/contacts/create' },
+	          'Create new Contact'
+	        ),
+	        _react2.default.createElement(
 	          'ul',
 	          null,
 	          this._renderContactItems()
@@ -22559,20 +22576,31 @@
 
 	var ActionTypes = _interopRequireWildcard(_action_types);
 
+	var _actions = __webpack_require__(173);
+
+	var _httpApi = __webpack_require__(169);
+
+	var _httpApi2 = _interopRequireDefault(_httpApi);
+
 	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	function ContactStoreFactory(atom, dispatcher, httpApi) {
+	function ContactStoreFactory(atom, dispatcher) {
 	  var p = {
 	    contacts: ['data', 'contacts'],
 	    detailContact: ['data', 'detailContact'],
 	    isEditing: ['ui', 'contacts', 'isEditing'],
-	    editErrors: ['ui', 'contacts', 'editErrors']
+	    editErrors: ['ui', 'contacts', 'editErrors'],
+	    lastListFetch: ['ui', 'contacts', 'lastListFetch'],
+	    lastDetailFetch: ['ui', 'contacts', 'lastDetailFetch']
 	  };
 
-	  var lastListFetch = undefined,
-	      lastSingleFetch = undefined;
+	  var CACHE_TIME = 5000;
+
+	  function shouldFetchAgain(ts) {
+	    return Date.now() - ts > CACHE_TIME;
+	  }
 
 	  function _getIn(path, state) {
 	    return _mori2.default.getIn(state, path);
@@ -22580,12 +22608,16 @@
 
 	  var getContactList = _mori2.default.partial(_getIn, p.contacts);
 	  var getDetailContact = _mori2.default.partial(_getIn, p.detailContact);
+	  var getEditErrors = _mori2.default.partial(_getIn, p.editErrors);
 	  var isEditingDetails = _mori2.default.partial(_getIn, p.isEditing);
 
 	  function loadContacts(_ref) {
 	    var next = _ref.next;
 
-	    httpApi.getClj('/contacts').then(function (contacts) {
+	    if (!shouldFetchAgain(atom.getIn(p.lastListFetch))) return next();
+
+	    _httpApi2.default.getClj('/contacts').then(function (contacts) {
+	      atom.set(p.lastListFetch, Date.now(), { silent: true });
 	      atom.set(p.contacts, contacts);
 	      next();
 	    });
@@ -22596,16 +22628,26 @@
 	    var next = _ref2.next;
 
 	    var id = parseInt(contactId);
-	    console.log('ContactStore, loadContactById', contactId);
 	    //if we already have it cached, don't refetch
 	    if (atom.getIn(p.detailContact.concat('id')) === id) return next();
-	    httpApi.getClj('/contacts/' + id).then(function (contact) {
+	    if (!shouldFetchAgain(atom.getIn(p.lastDetailFetch))) return next();
+
+	    _httpApi2.default.getClj('/contacts/' + id).then(function (contact) {
+	      console.log('Load contact by id', contact.toString());
+	      atom.set(p.lastDetailFetch, Date.now(), { silent: true });
 	      atom.set(p.detailContact, contact);
 	      next();
+	    }).catch(function (err) {
+	      console.log('Error fetching contact by id');
+	      dispatcher.emit(ActionTypes.ROUTE_SET, { page: 'not_found' });
+	      //return false to stop the router from trying next route handler
+	      next(false);
 	    });
 	  }
 
-	  function createContact() {
+	  function createContact(_ref3) {
+	    var next = _ref3.next;
+
 	    var newContact = _mori2.default.toClj({
 	      id: null,
 	      first: '',
@@ -22613,22 +22655,73 @@
 	      email: ''
 	    });
 	    atom.set(p.detailContact, newContact);
+	    next();
 	  }
 
-	  function saveContact(_ref3) {
-	    var contact = _ref3.contact;
+	  function deleteContact(_ref4) {
+	    var id = _ref4.id;
 
-	    console.log('Save contact', contact.toString());
+	    _httpApi2.default.del('/contacts/' + id).then(function () {
+	      atom.set(p.lastListFetch, 0, { silent: true });
+	      (0, _actions.navigate)('/contacts');
+	    });
+	  }
+
+	  function saveContact(_ref5) {
+	    var contact = _ref5.contact;
+
+	    console.log('Save contact', contact);
+	    var errors = _mori2.default.hashMap();
+	    if (contact.first.trim() === '') {
+	      errors = _mori2.default.assoc(errors, 'first', 'First name is required');
+	    }
+	    if (contact.last.trim() === '') {
+	      errors = _mori2.default.assoc(errors, 'last', 'Last name is required');
+	    }
+	    if (contact.email.trim() === '') {
+	      errors = _mori2.default.assoc(errors, 'email', 'Email required');
+	    }
+
+	    if (_mori2.default.count(errors)) {
+	      //form is invalid
+	      console.log('Form invalid', errors.toString());
+	      atom.set(p.editErrors, errors);
+	    } else {
+	      atom.set(p.editErrors, { silent: true });
+	      if (contact.id) {
+	        //update contact
+	        _httpApi2.default.putClj('/contacts/' + contact.id, contact).then(function (c) {
+	          console.log('Contacted updated', c.toString());
+	          atom.set(p.detailContact, c);
+	          (0, _actions.navigate)('/contacts/' + _mori2.default.get(c, 'id'));
+	        }).catch(function (err) {
+	          console.log('Error updating contact', err);
+	        });
+	      } else {
+	        //new contact
+	        _httpApi2.default.postClj('/contacts', contact).then(function (c) {
+	          atom.set(p.lastListFetch, 0, { silent: true });
+	          atom.set(p.detailContact, c);
+	          (0, _actions.navigate)('/contacts/' + _mori2.default.get(c, 'id'));
+	        }).catch(function (err) {
+	          console.log('Error saving contact', err);
+	        });
+	      }
+	    }
 	  }
 
 	  //Dispatcher handlers
 	  dispatcher.listen(ActionTypes.CONTACTS_LOAD_ALL, loadContacts);
 	  dispatcher.listen(ActionTypes.CONTACTS_LOAD_ONE, loadContactById);
+	  dispatcher.listen(ActionTypes.CONTACTS_CREATE, createContact);
+	  dispatcher.listen(ActionTypes.CONTACTS_SAVE, saveContact);
+	  dispatcher.listen(ActionTypes.CONTACTS_DELETE, deleteContact);
 
 	  return {
 	    selectors: p,
 	    getContactList: getContactList,
 	    getDetailContact: getDetailContact,
+	    getEditErrors: getEditErrors,
 	    isEditingDetails: isEditingDetails
 	  };
 	}
@@ -22658,6 +22751,18 @@
 	var _view = __webpack_require__(180);
 
 	var _view2 = _interopRequireDefault(_view);
+
+	var _edit = __webpack_require__(185);
+
+	var _edit2 = _interopRequireDefault(_edit);
+
+	var _delete = __webpack_require__(187);
+
+	var _delete2 = _interopRequireDefault(_delete);
+
+	var _notfound = __webpack_require__(186);
+
+	var _notfound2 = _interopRequireDefault(_notfound);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -22703,9 +22808,16 @@
 	          return _view2.default;
 	          break;
 	        case 'contact_edit':
+	          return _edit2.default;
+	          break;
+	        case 'contact_create':
+	          return _edit2.default;
+	          break;
 	        case 'contact_delete':
+	          return _delete2.default;
+	          break;
 	        default:
-	          return _list2.default;
+	          return _notfound2.default;
 	      }
 	    }
 	  }, {
@@ -22741,8 +22853,17 @@
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
 	});
+	exports.default = RouteStoreFactory;
 
-	exports.default = function (atom, Dispatcher) {
+	var _mori = __webpack_require__(89);
+
+	var _mori2 = _interopRequireDefault(_mori);
+
+	var _action_types = __webpack_require__(166);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function RouteStoreFactory(atom, Dispatcher) {
 	  var p = {
 	    route: ['route', 'page']
 	  };
@@ -22765,15 +22886,7 @@
 	    paths: p,
 	    getRoute: getRoute
 	  };
-	};
-
-	var _mori = __webpack_require__(89);
-
-	var _mori2 = _interopRequireDefault(_mori);
-
-	var _action_types = __webpack_require__(166);
-
-	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+	}
 
 /***/ },
 /* 180 */
@@ -22854,11 +22967,17 @@
 	          { url: '/contacts' },
 	          'Go back'
 	        ),
-	        ' | ',
+	        ' |',
 	        _react2.default.createElement(
 	          _link2.default,
 	          { url: '/contacts/' + _mori2.default.get(contact, 'id') + '/edit' },
 	          'Edit'
+	        ),
+	        ' |',
+	        _react2.default.createElement(
+	          _link2.default,
+	          { url: '/contacts/' + _mori2.default.get(contact, 'id') + '/delete' },
+	          'Delete'
 	        )
 	      );
 	    }
@@ -22988,7 +23107,7 @@
 	    value: function handleClick(e) {
 	      if (this.props.skip) return;
 	      e.preventDefault();
-	      (0, _actions.navigate)({ url: this.props.url });
+	      (0, _actions.navigate)(this.props.url);
 	    }
 	  }, {
 	    key: 'render',
@@ -23125,6 +23244,371 @@
 	var IS_SERVER = exports.IS_SERVER = global.window == undefined;
 	var IS_CLIENT = exports.IS_CLIENT = typeof window !== 'undefined';
 	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
+
+/***/ },
+/* 185 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _react = __webpack_require__(86);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _mori = __webpack_require__(89);
+
+	var _mori2 = _interopRequireDefault(_mori);
+
+	var _link = __webpack_require__(182);
+
+	var _link2 = _interopRequireDefault(_link);
+
+	var _stores = __webpack_require__(162);
+
+	var _dispatcher = __webpack_require__(164);
+
+	var _dispatcher2 = _interopRequireDefault(_dispatcher);
+
+	var _action_types = __webpack_require__(166);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var ContactEdit = (function (_Component) {
+	  _inherits(ContactEdit, _Component);
+
+	  function ContactEdit(props) {
+	    _classCallCheck(this, ContactEdit);
+
+	    var _this2 = _possibleConstructorReturn(this, Object.getPrototypeOf(ContactEdit).call(this, props));
+
+	    _this2.contact = _stores.ContactStore.getDetailContact(props.state);
+	    _this2.state = _mori2.default.toJs(_this2.contact);
+	    return _this2;
+	  }
+
+	  _createClass(ContactEdit, [{
+	    key: 'handleSaveClick',
+	    value: function handleSaveClick(e) {
+	      e.preventDefault();
+	      console.log('Saving', this.state);
+	      _dispatcher2.default.emit(_action_types.CONTACTS_SAVE, { contact: this.state });
+	    }
+	  }, {
+	    key: 'handleFieldChange',
+	    value: function handleFieldChange(e, fieldName) {
+	      var patchState = {};
+	      patchState[fieldName] = e.target.value;
+	      this.setState(patchState);
+	    }
+	  }, {
+	    key: 'fieldClass',
+	    value: function fieldClass(fieldName, errors) {
+	      var defaultClass = arguments.length <= 2 || arguments[2] === undefined ? '' : arguments[2];
+	      var errorClass = arguments.length <= 3 || arguments[3] === undefined ? 'error' : arguments[3];
+
+	      if (_mori2.default.get(errors, fieldName)) {
+	        return errorClass;
+	      } else {
+	        return defaultClass;
+	      }
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      var _this = this;
+
+	      var formTitle = _mori2.default.get(this.contact, 'id') ? 'Edit Contact' : 'Create Contact';
+	      var formErrors = _stores.ContactStore.getEditErrors(this.props.state);
+	      return _react2.default.createElement(
+	        'form',
+	        null,
+	        _react2.default.createElement(
+	          'h2',
+	          null,
+	          formTitle
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'label',
+	            { htmlFor: 'first' },
+	            'First name'
+	          ),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement('input', { className: this.fieldClass('first', formErrors), type: 'text', name: 'first', value: this.state.first, onChange: function onChange(e) {
+	              _this.handleFieldChange(e, 'first');
+	            } }),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement(
+	            'span',
+	            { className: this.fieldClass('first', formErrors, 'hidden', 'form-error') },
+	            _mori2.default.get(formErrors, 'first')
+	          )
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'label',
+	            { htmlFor: 'last' },
+	            'Last name'
+	          ),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement('input', { className: this.fieldClass('last', formErrors), type: 'text', name: 'last', value: this.state.last, onChange: function onChange(e) {
+	              _this.handleFieldChange(e, 'last');
+	            } }),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement(
+	            'span',
+	            { className: this.fieldClass('last', formErrors, 'hidden', 'form-error') },
+	            _mori2.default.get(formErrors, 'last')
+	          )
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'label',
+	            { htmlFor: 'email' },
+	            'Email'
+	          ),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement('input', { className: this.fieldClass('email', formErrors), type: 'text', name: 'email', value: this.state.email, onChange: function onChange(e) {
+	              _this.handleFieldChange(e, 'email');
+	            } }),
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement(
+	            'span',
+	            { className: this.fieldClass('email', formErrors, 'hidden', 'form-error') },
+	            _mori2.default.get(formErrors, 'email')
+	          )
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'button',
+	            { onClick: function onClick(e) {
+	                return _this.handleSaveClick(e);
+	              } },
+	            'Save'
+	          )
+	        ),
+	        _react2.default.createElement(
+	          'div',
+	          null,
+	          _react2.default.createElement(
+	            _link2.default,
+	            { url: '/contacts' },
+	            'Back to Contacts'
+	          )
+	        )
+	      );
+	    }
+	  }]);
+
+	  return ContactEdit;
+	})(_react.Component);
+
+	exports.default = ContactEdit;
+
+	ContactEdit.propTypes = {
+	  state: _react.PropTypes.object.isRequired
+	};
+
+/***/ },
+/* 186 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _react = __webpack_require__(86);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _link = __webpack_require__(182);
+
+	var _link2 = _interopRequireDefault(_link);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var NotFound = (function (_Component) {
+	  _inherits(NotFound, _Component);
+
+	  function NotFound() {
+	    _classCallCheck(this, NotFound);
+
+	    return _possibleConstructorReturn(this, Object.getPrototypeOf(NotFound).apply(this, arguments));
+	  }
+
+	  _createClass(NotFound, [{
+	    key: 'render',
+	    value: function render() {
+	      return _react2.default.createElement(
+	        'div',
+	        null,
+	        _react2.default.createElement(
+	          'h1',
+	          null,
+	          'Oooooops!'
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          'You just broke Internet. RUN AWAY!'
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            _link2.default,
+	            { url: '/contacts' },
+	            'Back to Home'
+	          )
+	        )
+	      );
+	    }
+	  }]);
+
+	  return NotFound;
+	})(_react.Component);
+
+	exports.default = NotFound;
+
+/***/ },
+/* 187 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _react = __webpack_require__(86);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _mori = __webpack_require__(89);
+
+	var _mori2 = _interopRequireDefault(_mori);
+
+	var _link = __webpack_require__(182);
+
+	var _link2 = _interopRequireDefault(_link);
+
+	var _stores = __webpack_require__(162);
+
+	var _dispatcher = __webpack_require__(164);
+
+	var _dispatcher2 = _interopRequireDefault(_dispatcher);
+
+	var _action_types = __webpack_require__(166);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var ContactDelete = (function (_Component) {
+	  _inherits(ContactDelete, _Component);
+
+	  function ContactDelete() {
+	    _classCallCheck(this, ContactDelete);
+
+	    return _possibleConstructorReturn(this, Object.getPrototypeOf(ContactDelete).apply(this, arguments));
+	  }
+
+	  _createClass(ContactDelete, [{
+	    key: 'handleDeleteClick',
+	    value: function handleDeleteClick(e, id) {
+	      e.preventDefault();
+	      _dispatcher2.default.emit(_action_types.CONTACTS_DELETE, { id: id });
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      var _this = this;
+
+	      var contact = _stores.ContactStore.getDetailContact(this.props.state),
+	          id = _mori2.default.get(contact, 'id'),
+	          firstName = _mori2.default.get(contact, 'first'),
+	          lastName = _mori2.default.get(contact, 'last');
+
+	      return _react2.default.createElement(
+	        'div',
+	        null,
+	        _react2.default.createElement(
+	          'h1',
+	          null,
+	          'Delete Contact'
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          'Are you sure you want to delete contact ',
+	          _react2.default.createElement(
+	            'strong',
+	            null,
+	            firstName + ' ' + lastName
+	          ),
+	          '?'
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            _link2.default,
+	            { url: '/contacts/' + id },
+	            'No, cancel'
+	          ),
+	          ' |',
+	          _react2.default.createElement(
+	            'a',
+	            { href: '#', onClick: function onClick(e) {
+	                return _this.handleDeleteClick(e, id);
+	              } },
+	            'Yes, delete it!'
+	          )
+	        )
+	      );
+	    }
+	  }]);
+
+	  return ContactDelete;
+	})(_react.Component);
+
+	exports.default = ContactDelete;
 
 /***/ }
 /******/ ]);

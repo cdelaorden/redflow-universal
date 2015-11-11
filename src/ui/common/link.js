@@ -5,7 +5,7 @@ export default class Link extends Component {
   handleClick(e){
     if(this.props.skip) return;
     e.preventDefault();
-    navigate({ url: this.props.url });
+    navigate(this.props.url);
   }
 
   render(){

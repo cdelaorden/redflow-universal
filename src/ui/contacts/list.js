@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import ListItem from './list_item';
+import Link from '../common/link';
 import { ContactStore } from '../../stores';
 import m from 'mori';
 import { navigate } from '../../actions';
@@ -15,6 +16,7 @@ export default class ContactList extends Component {
   render(){
     return (
       <div>
+        <Link url='/contacts/create'>Create new Contact</Link>
         <ul>
         { this._renderContactItems() }
         </ul>

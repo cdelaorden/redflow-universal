@@ -29,17 +29,18 @@ const API = {
   },
 
   update(contact){
-    todos = todos.map(c => c.id === contact.id ? contact : t);
+    contacts = contacts.map(c => c.id === contact.id ? contact : c);
     return Promise.resolve(contact);
   },
 
   delete(contact){
-    todos = todos.filter(c => c.id !== contact.id);
+    contacts = contacts.filter(c => c.id !== contact.id);
     return Promise.resolve();
   }
 }
 
 function attachRoutes(router){
+
   function parseContact(req, res, next){
     req.postedContact = {
       id: req.body.id,
@@ -59,7 +60,6 @@ function attachRoutes(router){
     })
     .catch(err => res.status(404).end());
   });
-
 
   //CONTACTS
   router.get('/contacts', function(req, res){

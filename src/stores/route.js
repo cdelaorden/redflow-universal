@@ -1,7 +1,7 @@
 import m from 'mori';
 import { ROUTE_SET } from '../action_types';
 
-export default function(atom, Dispatcher){
+export default function RouteStoreFactory(atom, Dispatcher){
   const p = {
     route: ['route', 'page']
   }

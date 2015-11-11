@@ -2,6 +2,9 @@ import React from 'react';
 import { RouteStore } from '../../stores';
 import List from './list';
 import View from './view';
+import Edit from './edit';
+import Delete from './delete';
+import NotFound from '../common/notfound';
 
 export default class Layout extends React.Component {
   constructor({ atom }){
@@ -28,9 +31,16 @@ export default class Layout extends React.Component {
       return View;
       break;
     case 'contact_edit':
+      return Edit;
+      break;
+    case 'contact_create':
+      return Edit;
+      break;
     case 'contact_delete':
+      return Delete;
+      break;
     default:
-      return List;
+      return NotFound;
     }
   }
 
