@@ -9,10 +9,7 @@ import Link from '../common/link';
 import NotFound from '../common/notfound';
 import Login from '../common/login';
 
-export default class Layout extends React.Component {
-  constructor({ atom }){
-    super();
-  }
+class Layout extends React.Component {
   componentDidMount(){
     this.props.atom.addChangeListener(this._onChange.bind(this));
   }
@@ -75,3 +72,5 @@ export default class Layout extends React.Component {
     );
   }
 }
+
+export default Layout;

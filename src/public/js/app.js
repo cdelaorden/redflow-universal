@@ -22814,11 +22814,10 @@
 	var Layout = (function (_React$Component) {
 	  _inherits(Layout, _React$Component);
 
-	  function Layout(_ref) {
+	  function Layout() {
 	    _classCallCheck(this, Layout);
 
-	    var atom = _ref.atom;
-	    return _possibleConstructorReturn(this, Object.getPrototypeOf(Layout).call(this));
+	    return _possibleConstructorReturn(this, Object.getPrototypeOf(Layout).apply(this, arguments));
 	  }
 
 	  _createClass(Layout, [{
@@ -23052,11 +23051,11 @@
 	  return ContactView;
 	})(_react.Component);
 
-	exports.default = ContactView;
-
 	ContactView.propTypes = {
 	  state: _react2.default.PropTypes.object.isRequired
 	};
+
+	exports.default = ContactView;
 
 /***/ },
 /* 181 */
@@ -23127,11 +23126,11 @@
 	  return ContactItem;
 	})(_react.Component);
 
-	exports.default = ContactItem;
-
 	ContactItem.propTypes = {
 	  contact: _react2.default.PropTypes.object.isRequired
 	};
+
+	exports.default = ContactItem;
 
 /***/ },
 /* 182 */
@@ -23178,12 +23177,12 @@
 	  }, {
 	    key: 'render',
 	    value: function render() {
-	      var _this = this;
+	      var _this2 = this;
 
 	      return _react2.default.createElement(
 	        'a',
 	        { href: this.props.url, onClick: function onClick(e) {
-	            return _this.handleClick(e);
+	            return _this2.handleClick(e);
 	          } },
 	        this.props.children
 	      );
@@ -23193,13 +23192,13 @@
 	  return Link;
 	})(_react.Component);
 
-	exports.default = Link;
-
 	Link.propTypes = {
 	  url: _react.PropTypes.string.isRequired,
 	  target: _react.PropTypes.string,
 	  skip: _react.PropTypes.bool
 	};
+
+	exports.default = Link;
 
 /***/ },
 /* 183 */
@@ -23357,11 +23356,11 @@
 	  function ContactEdit(props) {
 	    _classCallCheck(this, ContactEdit);
 
-	    var _this2 = _possibleConstructorReturn(this, Object.getPrototypeOf(ContactEdit).call(this, props));
+	    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(ContactEdit).call(this, props));
 
-	    _this2.contact = _stores.ContactStore.getDetailContact(props.state);
-	    _this2.state = _mori2.default.toJs(_this2.contact);
-	    return _this2;
+	    _this.contact = _stores.ContactStore.getDetailContact(props.state);
+	    _this.state = _mori2.default.toJs(_this.contact);
+	    return _this;
 	  }
 
 	  _createClass(ContactEdit, [{
@@ -23393,7 +23392,7 @@
 	  }, {
 	    key: 'render',
 	    value: function render() {
-	      var _this = this;
+	      var _this2 = this;
 
 	      var formTitle = _mori2.default.get(this.contact, 'id') ? 'Edit Contact' : 'Create Contact';
 	      var formErrors = _stores.ContactStore.getEditErrors(this.props.state);
@@ -23415,7 +23414,7 @@
 	          ),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement('input', { className: this.fieldClass('first', formErrors), type: 'text', name: 'first', value: this.state.first, onChange: function onChange(e) {
-	              _this.handleFieldChange(e, 'first');
+	              _this2.handleFieldChange(e, 'first');
 	            } }),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement(
@@ -23434,7 +23433,7 @@
 	          ),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement('input', { className: this.fieldClass('last', formErrors), type: 'text', name: 'last', value: this.state.last, onChange: function onChange(e) {
-	              _this.handleFieldChange(e, 'last');
+	              _this2.handleFieldChange(e, 'last');
 	            } }),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement(
@@ -23453,7 +23452,7 @@
 	          ),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement('input', { className: this.fieldClass('email', formErrors), type: 'text', name: 'email', value: this.state.email, onChange: function onChange(e) {
-	              _this.handleFieldChange(e, 'email');
+	              _this2.handleFieldChange(e, 'email');
 	            } }),
 	          _react2.default.createElement('br', null),
 	          _react2.default.createElement(
@@ -23468,7 +23467,7 @@
 	          _react2.default.createElement(
 	            'button',
 	            { onClick: function onClick(e) {
-	                return _this.handleSaveClick(e);
+	                return _this2.handleSaveClick(e);
 	              } },
 	            'Save'
 	          )
@@ -23489,11 +23488,11 @@
 	  return ContactEdit;
 	})(_react.Component);
 
-	exports.default = ContactEdit;
-
 	ContactEdit.propTypes = {
 	  state: _react.PropTypes.object.isRequired
 	};
+
+	exports.default = ContactEdit;
 
 /***/ },
 /* 186 */
@@ -23624,7 +23623,7 @@
 	  }, {
 	    key: 'render',
 	    value: function render() {
-	      var _this = this;
+	      var _this2 = this;
 
 	      var contact = _stores.ContactStore.getDetailContact(this.props.state),
 	          id = _mori2.default.get(contact, 'id'),
@@ -23662,7 +23661,7 @@
 	          _react2.default.createElement(
 	            'a',
 	            { href: '#', onClick: function onClick(e) {
-	                return _this.handleDeleteClick(e, id);
+	                return _this2.handleDeleteClick(e, id);
 	              } },
 	            'Yes, delete it!'
 	          )

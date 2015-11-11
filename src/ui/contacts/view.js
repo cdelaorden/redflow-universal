@@ -4,7 +4,7 @@ import { ContactStore } from '../../stores';
 import m from 'mori';
 import { navigate } from '../../actions';
 
-export default class ContactView extends Component {
+class ContactView extends Component {
   handleClick(e){
     navigate(e);
   }
@@ -31,3 +31,5 @@ export default class ContactView extends Component {
 ContactView.propTypes = {
   state: React.PropTypes.object.isRequired
 }
+
+export default ContactView;

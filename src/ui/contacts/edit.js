@@ -6,7 +6,7 @@ import Dispatcher from '../../lib/dispatcher';
 import { CONTACTS_SAVE } from '../../action_types';
 
 
-export default class ContactEdit extends Component {
+class ContactEdit extends Component {
   constructor(props){
     super(props);
     this.contact = ContactStore.getDetailContact(props.state);
@@ -70,3 +70,5 @@ export default class ContactEdit extends Component {
 ContactEdit.propTypes = {
   state: PropTypes.object.isRequired
 }
+
+export default ContactEdit;

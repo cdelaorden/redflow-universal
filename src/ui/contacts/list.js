@@ -5,7 +5,7 @@ import { ContactStore } from '../../stores';
 import m from 'mori';
 import { navigate } from '../../actions';
 
-export default class ContactList extends Component {
+class ContactList extends Component {
   _renderContactItems(){
     const contacts = ContactStore.getContactList(this.props.state);
     return m.intoArray(m.map(c => {
@@ -25,3 +25,4 @@ export default class ContactList extends Component {
   }
 }
 
+export default ContactList;

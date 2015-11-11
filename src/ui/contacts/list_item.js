@@ -4,7 +4,7 @@ import { ContactStore } from '../../stores';
 import m from 'mori';
 import { navigate } from '../../actions';
 
-export default class ContactItem extends Component {
+class ContactItem extends Component {
   render(){
     const { state, contact } = this.props;
     return (
@@ -20,3 +20,5 @@ export default class ContactItem extends Component {
 ContactItem.propTypes = {
   contact: React.PropTypes.object.isRequired
 }
+
+export default ContactItem;

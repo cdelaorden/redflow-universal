@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import Link from './link';
 
-export default class NotFound extends Component {
+class NotFound extends Component {
   render(){
     return (
       <div>
@@ -12,3 +12,5 @@ export default class NotFound extends Component {
     );
   }
 }
+
+export default NotFound;

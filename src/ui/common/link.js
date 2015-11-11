@@ -1,7 +1,7 @@
 import React, { Component, PropTypes } from 'react';
 import { navigate } from '../../actions';
 
-export default class Link extends Component {
+class Link extends Component {
   handleClick(e){
     if(this.props.skip) return;
     e.preventDefault();
@@ -21,3 +21,6 @@ Link.propTypes = {
   target: PropTypes.string,
   skip: PropTypes.bool
 }
+
+
+export default Link;

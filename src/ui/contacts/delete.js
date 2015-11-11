@@ -6,7 +6,7 @@ import Dispatcher from '../../lib/dispatcher';
 import { CONTACTS_DELETE } from '../../action_types';
 
 
-export default class ContactDelete extends Component {
+class ContactDelete extends Component {
   handleDeleteClick(e, id){
     e.preventDefault();
     Dispatcher.emit(CONTACTS_DELETE, { id: id });
@@ -31,3 +31,6 @@ export default class ContactDelete extends Component {
   }
 
 }
+
+
+export default ContactDelete;
