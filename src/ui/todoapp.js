@@ -1,19 +1,11 @@
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
 import atom from '../lib/atom';
-import initialState from '../config/initial_state';
 import TodoList from './todolist';
 import Contacts from './contacts';
 
 if(process.env.NODE_ENV === 'development'){
   window.atom = atom;
-}
-
-if(typeof(window.__atomState) !== 'undefined'){
-  atom.swap(JSON.parse(window.__atomState));
-}
-else {
-  atom.swap(initialState);
 }
 
 export default class TodoApp extends Component {
@@ -45,6 +37,7 @@ export default class TodoApp extends Component {
 
   render(){
     var state = atom.get();
+    console.log('App render', atom.toString());
     var Component = this.getComponentForRoute()
     return (
       <div>

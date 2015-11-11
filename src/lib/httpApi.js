@@ -1,8 +1,12 @@
 'use strict';
 import request from 'superagent';
 import m from 'mori';
-const BASE_URL = '/api';
+import { IS_SERVER, IS_CLIENT } from './is_server';
+let BASE_URL = '/api';
 
+if(IS_SERVER){
+  BASE_URL = 'http://' + (process.env.ADDRESS || '0.0.0.0:') + (process.env.PORT || 3000) + BASE_URL;
+}
 
 function getApiUrl(url){
   return BASE_URL + (url[0] !== '/' ? '/':'') + url;
@@ -18,6 +22,7 @@ function ensureJs(data){
 
 const httpApi = {
   get: function(url){
+    console.log('GET', url);
     return new Promise((resolve,reject) => {
       request(getApiUrl(url))
       .end((err, res) => {
@@ -26,6 +31,7 @@ const httpApi = {
     });
   },
   post: function(url, data){
+    console.log('POST', url, data);
     return new Promise((resolve,reject) => {
       request.post(getApiUrl(url))
         .send(ensureJs(data))
@@ -35,6 +41,7 @@ const httpApi = {
     });
   },
   put: function(url, data){
+    console.log('PUT', url, data);
     return new Promise((resolve,reject) => {
       request(getApiUrl(url))
       .send(ensureJs(data))
@@ -44,6 +51,7 @@ const httpApi = {
     });
   },
   del: function(url){
+    console.log('DELETE', url);
     return new Promise((resolve,reject) => {
       request.del(getApiUrl(url))
       .end((err,res) => {

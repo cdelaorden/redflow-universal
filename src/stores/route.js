@@ -3,15 +3,16 @@ import { ROUTE_SET } from '../action_types';
 
 export default function(atom, Dispatcher){
   const p = {
-    route: ['activePage']
+    route: ['route', 'page']
   }
 
   function getRoute(state){
-    return atom.getIn(p.route);
+    return m.getIn(state, p.route);
   }
 
-  function setRoute({ page }){
+  function setRoute({ page, next }){
     atom.set(p.route, page);
+    if(next) next();
   }
 
   Dispatcher.listen(ROUTE_SET, setRoute);

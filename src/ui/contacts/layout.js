@@ -12,7 +12,6 @@ export default class Layout extends React.Component {
   }
 
   _onChange(newState){
-    console.log('Atom changed')
     this.forceUpdate();
   }
 
@@ -20,8 +19,7 @@ export default class Layout extends React.Component {
     this.props.atom.removeChangeListener(this._onChange);
   }
 
-  getComponentForRoute(state){
-    const route = RouteStore.getRoute(state);
+  getComponentForRoute(route){
     switch(route){
     case 'contact_list':
       return List;
@@ -39,7 +37,7 @@ export default class Layout extends React.Component {
   render(){
     var state = this.props.atom.get();
     var route = RouteStore.getRoute(state);
-    var Component = this.getComponentForRoute(state);
+    var Component = this.getComponentForRoute(route);
     return (
       <div>
         <h1>Contacts</h1>

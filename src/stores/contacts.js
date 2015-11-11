@@ -19,24 +19,24 @@ export default function ContactStoreFactory(atom, dispatcher, httpApi){
   const getDetailContact = m.partial(_getIn, p.detailContact);
   const isEditingDetails = m.partial(_getIn, p.isEditing);
 
-  function loadContacts(){
+  function loadContacts({ next }){
     httpApi.getClj('/contacts')
       .then(contacts => {
-        lastListFetch = Date.getTime();
         atom.set(p.contacts, contacts);
-      })
-      .catch(err => {
-        console.log('loadContacts failed', err);
-      })
+        next();
+      });
   }
 
-  function loadContactById({ contactId }){
+  function loadContactById({ contactId, next }){
     const id = parseInt(contactId);
+    console.log('ContactStore, loadContactById', contactId);
     //if we already have it cached, don't refetch
-    if(atom.getIn(p.detailContact.concat('id')) === id) return;
-    lastSingleFetch = Date.getTime();
+    if(atom.getIn(p.detailContact.concat('id')) === id) return next();
     httpApi.getClj('/contacts/' + id)
-      .then(contact => atom.set(p.detailContact, contact));
+      .then(contact => {
+        atom.set(p.detailContact, contact);
+        next();
+      });
   }
 
   function createContact(){
@@ -57,8 +57,8 @@ export default function ContactStoreFactory(atom, dispatcher, httpApi){
   dispatcher.listen(ActionTypes.CONTACTS_LOAD_ALL, loadContacts);
   dispatcher.listen(ActionTypes.CONTACTS_LOAD_ONE, loadContactById);
 
-
   return {
+    selectors: p,
     getContactList,
     getDetailContact,
     isEditingDetails

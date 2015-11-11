@@ -7,6 +7,7 @@ class Atom {
   }
 
   __notifyChange(){
+    //console.log('Atom change', this.toString());
     this.__listeners.forEach(cb => cb(this.__state));
   }
 

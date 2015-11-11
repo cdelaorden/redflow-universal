@@ -1,8 +1,12 @@
 doctype html
 html
   head
-    title= RedFlow Universal Example
+    title RedFlow Universal Example
     link(rel='stylesheet', href='/css/styles.css')
   body
-    div#app= body
+    div#app.
+      !{body}
+    script(type='text/javascript').
+      window.__initialState = !{ initialState }
+
     script(src='/js/app.js')

@@ -12,6 +12,6 @@ module.exports = {
     }
   },
   route: {
-    page: 'todos'
+    page: 'contact_list'
   }
 };

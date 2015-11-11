@@ -66,6 +66,10 @@
 
 	var _atom2 = _interopRequireDefault(_atom);
 
+	var _initial_state = __webpack_require__(165);
+
+	var _initial_state2 = _interopRequireDefault(_initial_state);
+
 	var _routes = __webpack_require__(168);
 
 	var _routes2 = _interopRequireDefault(_routes);
@@ -84,11 +88,18 @@
 	    router.setRoute(url);
 	  });
 	  router.configure({
-	    html5history: true
+	    html5history: true,
+	    async: true
 	  });
+	  if (typeof window.__initialState !== 'undefined') {
+	    console.log('Hydrating atom', window.__initialState);
+	    _atom2.default.swap(window.__initialState);
+	  } else {
+	    _atom2.default.swap(_initial_state2.default);
+	  }
 
 	  _reactDom2.default.render(_react2.default.createElement(_layout2.default, { atom: _atom2.default }), document.getElementById('app'));
-	  router.init('/contacts');
+	  router.init();
 	};
 
 /***/ },
@@ -10583,6 +10594,7 @@
 	    value: function __notifyChange() {
 	      var _this = this;
 
+	      //console.log('Atom change', this.toString());
 	      this.__listeners.forEach(function (cb) {
 	        return cb(_this.__state);
 	      });
@@ -20154,7 +20166,28 @@
 	exports.Dispatcher = Dispatcher;
 
 /***/ },
-/* 165 */,
+/* 165 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	module.exports = {
+	  data: {
+	    contacts: [],
+	    detailContact: {}
+	  },
+	  ui: {
+	    contacts: {
+	      isEditing: false,
+	      editErrors: {}
+	    }
+	  },
+	  route: {
+	    page: 'contact_list'
+	  }
+	};
+
+/***/ },
 /* 166 */
 /***/ function(module, exports) {
 
@@ -20164,7 +20197,7 @@
 	  value: true
 	});
 	var CONTACTS_LOAD_ALL = exports.CONTACTS_LOAD_ALL = 'CONTACTS:LOAD:ALL';
-	var CONTACTS_LOAD_ONE = exports.CONTACTS_LOAD_ONE = 'CONTACTS_LOAD_ONE';
+	var CONTACTS_LOAD_ONE = exports.CONTACTS_LOAD_ONE = 'CONTACTS:LOAD:ONE';
 	var CONTACTS_CREATE = exports.CONTACTS_CREATE = 'CONTACTS:CREATE';
 	var CONTACTS_EDIT = exports.CONTACTS_EDIT = 'CONTACTS:EDIT';
 	var CONTACTS_SAVE = exports.CONTACTS_SAVE = 'CONTACTS:SAVE';
@@ -20914,27 +20947,45 @@
 
 	var _action_types = __webpack_require__(166);
 
+	var _is_server = __webpack_require__(184);
+
+	var noop = function noop() {};
+
 	var RouteFactory = function RouteFactory(dispatcher) {
 	  function loadContacts() {
-	    dispatcher.emit(_action_types.CONTACTS_LOAD_ALL, {});
+	    var next = arguments.length <= 0 || arguments[0] === undefined ? noop : arguments[0];
+
+	    dispatcher.emit(_action_types.CONTACTS_LOAD_ALL, { next: next });
 	  }
 
 	  function loadContactById(contactId) {
-	    dispatcher.emit(_action_types.CONTACTS_LOAD_ONE, { contactId: contactId });
+	    var next = arguments.length <= 1 || arguments[1] === undefined ? noop : arguments[1];
+
+	    dispatcher.emit(_action_types.CONTACTS_LOAD_ONE, { contactId: contactId, next: next });
 	  }
 
 	  function setPage(page) {
+	    //we use rest params because this setPage could be passed route parameters
+
 	    return function () {
-	      return dispatcher.emit(_action_types.ROUTE_SET, { page: page });
+	      for (var _len = arguments.length, rest = Array(_len), _key = 0; _key < _len; _key++) {
+	        rest[_key] = arguments[_key];
+	      }
+
+	      console.log('SetPage', page, rest);
+	      var next = Array.isArray(rest) ? rest[rest.length - 1] : noop;
+	      dispatcher.emit(_action_types.ROUTE_SET, { page: page, next: next });
+	      //if(IS_SERVER) next();
 	    };
 	  }
 
 	  return {
-	    '/contacts': [loadContacts, setPage('contact_list')],
 	    '/contacts/create': [setPage('contact_create')],
 	    '/contacts/:id': [loadContactById, setPage('contact_view')],
 	    '/contacts/:id/edit': [loadContactById, setPage('contact_edit')],
-	    '/contacts/:id/delete': [loadContactById, setPage('contact_delete')]
+	    '/contacts/:id/delete': [loadContactById, setPage('contact_delete')],
+	    '/contacts': [loadContacts, setPage('contact_list')],
+	    '/': [loadContacts, setPage('contact_list')]
 	  };
 	};
 
@@ -20944,7 +20995,7 @@
 /* 169 */
 /***/ function(module, exports, __webpack_require__) {
 
-	'use strict';
+	/* WEBPACK VAR INJECTION */(function(process) {'use strict';
 
 	Object.defineProperty(exports, "__esModule", {
 	  value: true
@@ -20958,9 +21009,15 @@
 
 	var _mori2 = _interopRequireDefault(_mori);
 
+	var _is_server = __webpack_require__(184);
+
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 	var BASE_URL = '/api';
+
+	if (_is_server.IS_SERVER) {
+	  BASE_URL = 'http://' + (process.env.ADDRESS || '0.0.0.0:') + (process.env.PORT || 3000) + BASE_URL;
+	}
 
 	function getApiUrl(url) {
 	  return BASE_URL + (url[0] !== '/' ? '/' : '') + url;
@@ -20976,6 +21033,7 @@
 
 	var httpApi = {
 	  get: function get(url) {
+	    console.log('GET', url);
 	    return new Promise(function (resolve, reject) {
 	      (0, _superagent2.default)(getApiUrl(url)).end(function (err, res) {
 	        return err ? reject(err) : resolve(res.body);
@@ -20983,6 +21041,7 @@
 	    });
 	  },
 	  post: function post(url, data) {
+	    console.log('POST', url, data);
 	    return new Promise(function (resolve, reject) {
 	      _superagent2.default.post(getApiUrl(url)).send(ensureJs(data)).end(function (err, res) {
 	        return err ? reject(err) : resolve(res.body);
@@ -20990,6 +21049,7 @@
 	    });
 	  },
 	  put: function put(url, data) {
+	    console.log('PUT', url, data);
 	    return new Promise(function (resolve, reject) {
 	      (0, _superagent2.default)(getApiUrl(url)).send(ensureJs(data)).end(function (err, res) {
 	        return err ? reject(err) : resolve(res.body);
@@ -20997,6 +21057,7 @@
 	    });
 	  },
 	  del: function del(url) {
+	    console.log('DELETE', url);
 	    return new Promise(function (resolve, reject) {
 	      _superagent2.default.del(getApiUrl(url)).end(function (err, res) {
 	        return err ? reject(err) : resolve(res.body);
@@ -21015,6 +21076,7 @@
 	};
 
 	exports.default = httpApi;
+	/* WEBPACK VAR INJECTION */}.call(exports, __webpack_require__(183)))
 
 /***/ },
 /* 170 */
@@ -22520,24 +22582,26 @@
 	  var getDetailContact = _mori2.default.partial(_getIn, p.detailContact);
 	  var isEditingDetails = _mori2.default.partial(_getIn, p.isEditing);
 
-	  function loadContacts() {
+	  function loadContacts(_ref) {
+	    var next = _ref.next;
+
 	    httpApi.getClj('/contacts').then(function (contacts) {
-	      lastListFetch = Date.getTime();
 	      atom.set(p.contacts, contacts);
-	    }).catch(function (err) {
-	      console.log('loadContacts failed', err);
+	      next();
 	    });
 	  }
 
-	  function loadContactById(_ref) {
-	    var contactId = _ref.contactId;
+	  function loadContactById(_ref2) {
+	    var contactId = _ref2.contactId;
+	    var next = _ref2.next;
 
 	    var id = parseInt(contactId);
+	    console.log('ContactStore, loadContactById', contactId);
 	    //if we already have it cached, don't refetch
-	    if (atom.getIn(p.detailContact.concat('id')) === id) return;
-	    lastSingleFetch = Date.getTime();
+	    if (atom.getIn(p.detailContact.concat('id')) === id) return next();
 	    httpApi.getClj('/contacts/' + id).then(function (contact) {
-	      return atom.set(p.detailContact, contact);
+	      atom.set(p.detailContact, contact);
+	      next();
 	    });
 	  }
 
@@ -22551,8 +22615,8 @@
 	    atom.set(p.detailContact, newContact);
 	  }
 
-	  function saveContact(_ref2) {
-	    var contact = _ref2.contact;
+	  function saveContact(_ref3) {
+	    var contact = _ref3.contact;
 
 	    console.log('Save contact', contact.toString());
 	  }
@@ -22562,6 +22626,7 @@
 	  dispatcher.listen(ActionTypes.CONTACTS_LOAD_ONE, loadContactById);
 
 	  return {
+	    selectors: p,
 	    getContactList: getContactList,
 	    getDetailContact: getDetailContact,
 	    isEditingDetails: isEditingDetails
@@ -22620,7 +22685,6 @@
 	  }, {
 	    key: '_onChange',
 	    value: function _onChange(newState) {
-	      console.log('Atom changed');
 	      this.forceUpdate();
 	    }
 	  }, {
@@ -22630,8 +22694,7 @@
 	    }
 	  }, {
 	    key: 'getComponentForRoute',
-	    value: function getComponentForRoute(state) {
-	      var route = _stores.RouteStore.getRoute(state);
+	    value: function getComponentForRoute(route) {
 	      switch (route) {
 	        case 'contact_list':
 	          return _list2.default;
@@ -22650,7 +22713,7 @@
 	    value: function render() {
 	      var state = this.props.atom.get();
 	      var route = _stores.RouteStore.getRoute(state);
-	      var Component = this.getComponentForRoute(state);
+	      var Component = this.getComponentForRoute(route);
 	      return _react2.default.createElement(
 	        'div',
 	        null,
@@ -22681,17 +22744,19 @@
 
 	exports.default = function (atom, Dispatcher) {
 	  var p = {
-	    route: ['activePage']
+	    route: ['route', 'page']
 	  };
 
 	  function getRoute(state) {
-	    return atom.getIn(p.route);
+	    return _mori2.default.getIn(state, p.route);
 	  }
 
 	  function setRoute(_ref) {
 	    var page = _ref.page;
+	    var next = _ref.next;
 
 	    atom.set(p.route, page);
+	    if (next) next();
 	  }
 
 	  Dispatcher.listen(_action_types.ROUTE_SET, setRoute);
@@ -22950,6 +23015,116 @@
 	  target: _react.PropTypes.string,
 	  skip: _react.PropTypes.bool
 	};
+
+/***/ },
+/* 183 */
+/***/ function(module, exports) {
+
+	// shim for using process in browser
+
+	var process = module.exports = {};
+	var queue = [];
+	var draining = false;
+	var currentQueue;
+	var queueIndex = -1;
+
+	function cleanUpNextTick() {
+	    draining = false;
+	    if (currentQueue.length) {
+	        queue = currentQueue.concat(queue);
+	    } else {
+	        queueIndex = -1;
+	    }
+	    if (queue.length) {
+	        drainQueue();
+	    }
+	}
+
+	function drainQueue() {
+	    if (draining) {
+	        return;
+	    }
+	    var timeout = setTimeout(cleanUpNextTick);
+	    draining = true;
+
+	    var len = queue.length;
+	    while(len) {
+	        currentQueue = queue;
+	        queue = [];
+	        while (++queueIndex < len) {
+	            if (currentQueue) {
+	                currentQueue[queueIndex].run();
+	            }
+	        }
+	        queueIndex = -1;
+	        len = queue.length;
+	    }
+	    currentQueue = null;
+	    draining = false;
+	    clearTimeout(timeout);
+	}
+
+	process.nextTick = function (fun) {
+	    var args = new Array(arguments.length - 1);
+	    if (arguments.length > 1) {
+	        for (var i = 1; i < arguments.length; i++) {
+	            args[i - 1] = arguments[i];
+	        }
+	    }
+	    queue.push(new Item(fun, args));
+	    if (queue.length === 1 && !draining) {
+	        setTimeout(drainQueue, 0);
+	    }
+	};
+
+	// v8 likes predictible objects
+	function Item(fun, array) {
+	    this.fun = fun;
+	    this.array = array;
+	}
+	Item.prototype.run = function () {
+	    this.fun.apply(null, this.array);
+	};
+	process.title = 'browser';
+	process.browser = true;
+	process.env = {};
+	process.argv = [];
+	process.version = ''; // empty string to avoid regexp issues
+	process.versions = {};
+
+	function noop() {}
+
+	process.on = noop;
+	process.addListener = noop;
+	process.once = noop;
+	process.off = noop;
+	process.removeListener = noop;
+	process.removeAllListeners = noop;
+	process.emit = noop;
+
+	process.binding = function (name) {
+	    throw new Error('process.binding is not supported');
+	};
+
+	process.cwd = function () { return '/' };
+	process.chdir = function (dir) {
+	    throw new Error('process.chdir is not supported');
+	};
+	process.umask = function() { return 0; };
+
+
+/***/ },
+/* 184 */
+/***/ function(module, exports) {
+
+	/* WEBPACK VAR INJECTION */(function(global) {'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	var IS_SERVER = exports.IS_SERVER = global.window == undefined;
+	var IS_CLIENT = exports.IS_CLIENT = typeof window !== 'undefined';
+	/* WEBPACK VAR INJECTION */}.call(exports, (function() { return this; }())))
 
 /***/ }
 /******/ ]);
