@@ -18,5 +18,9 @@ It's a simple CRUD of contact objects, but requires a logged-in user to create/e
 3. `babel-node` from `babel-cli` available globally
 4. Careful as Babel 6 introduces some big breaking changes, you should do `npm update -g babel-core`
 5. Start webpack bundling with `npm run watch`
-6. Start server with `npm start` (will try to execute `babel-core src/server.js`)
+6. Start server with `npm start` (will try to execute `babel-node src/server.js`)
+
+## Work ahead
+1. Better JSX-compilation and ES6 for node (don't have --watch with babel-node)
+2. You need to restart the server after changes. ARgh!!!
  
