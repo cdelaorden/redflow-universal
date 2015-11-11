@@ -65,7 +65,7 @@ server.use(function(req,res){
 });
 
 server.listen(port, address, () => {
-  console.log('Express listening at port', port);
+  console.log(`Express listening at port ${port}, let the magic happen!`);
 });
 
 
