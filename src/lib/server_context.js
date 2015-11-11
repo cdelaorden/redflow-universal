@@ -1,8 +1,8 @@
-import { Atom } from './atom';
-import { Dispatcher } from './dispatcher';
+import atom, { Atom } from './atom';
+import dispatcher, { Dispatcher } from './dispatcher';
+import { USER_SET_AUTH } from '../action_types';
+import stores from '../stores';
 import director from 'director';
-import RouteStore from '../stores/route';
-import ContactStore from '../stores/contacts';
 
 /**
 * Transforms client-side route syntax to server-side compatible routes
@@ -23,14 +23,7 @@ function makeServerRoutes(routes){
 * Stores are connected to this specific dispatcher and atom instances
 **/
 export function createServerContext(initialState, routeConfig){
-  const atom = new Atom();
   atom.swap(initialState);
-  const dispatcher = new Dispatcher();
-  //create stores
-  const stores = {
-    Route: RouteStore(atom, dispatcher),
-    Contacts: ContactStore(atom, dispatcher)
-  };
   const routes = makeServerRoutes(routeConfig(dispatcher));
   const router = new director.http.Router(routes);
   router.configure({ async: true, recurse: false });
@@ -41,6 +34,10 @@ export function createServerContext(initialState, routeConfig){
     dispatcher,
     stores,
     router,
+    beginRequest: function(req){
+      console.log('SSR begin Request');
+      dispatcher.emit(USER_SET_AUTH, { user: req.session.user || null })
+    },
     reset: function(){
       this.atom.swap(initialState);
     }

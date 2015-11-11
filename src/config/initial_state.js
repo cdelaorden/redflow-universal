@@ -3,7 +3,8 @@
 module.exports = {
   data: {
     contacts: [],
-    detailContact: {}
+    detailContact: {},
+    me: null
   },
   ui: {
     contacts: {
@@ -11,7 +12,8 @@ module.exports = {
       editErrors: {},
       lastListFetch: 0,
       lastDetailFetch: 0
-    }
+    },
+    loginError: false
   },
   route: {
     page: 'contact_list'

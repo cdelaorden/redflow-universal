@@ -29,7 +29,7 @@ const API = {
   },
 
   update(contact){
-    contacts = contacts.map(c => c.id === contact.id ? contact : c);
+    contacts = contacts.map(c => c.id === contact.id ? Object.create({}, c, contact) : c);
     return Promise.resolve(contact);
   },
 
@@ -71,7 +71,7 @@ function attachRoutes(router){
   });
 
   router.post('/contacts', parseContact, function(req,res){
-    API.save(req.postedContact).then(contact => res.send(contact));
+    API.save(req.postedContact).then(contact => res.status(201).send(contact));
   });
 
   router.put('/contacts/:contactId', parseContact, function(req, res){

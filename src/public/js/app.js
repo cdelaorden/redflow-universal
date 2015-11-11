@@ -20074,10 +20074,6 @@
 
 	var _atom2 = _interopRequireDefault(_atom);
 
-	var _httpApi = __webpack_require__(169);
-
-	var _httpApi2 = _interopRequireDefault(_httpApi);
-
 	var _dispatcher = __webpack_require__(164);
 
 	var _dispatcher2 = _interopRequireDefault(_dispatcher);
@@ -20090,14 +20086,19 @@
 
 	var _route2 = _interopRequireDefault(_route);
 
+	var _users = __webpack_require__(189);
+
+	var _users2 = _interopRequireDefault(_users);
+
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
-	//stores
-
 	module.exports = {
-	  ContactStore: (0, _contacts2.default)(_atom2.default, _dispatcher2.default, _httpApi2.default),
-	  RouteStore: (0, _route2.default)(_atom2.default, _dispatcher2.default)
-	}; //default atom, dispatcher - can be overriden server-side
+	  ContactStore: (0, _contacts2.default)(_atom2.default, _dispatcher2.default),
+	  RouteStore: (0, _route2.default)(_atom2.default, _dispatcher2.default),
+	  UserStore: (0, _users2.default)(_atom2.default, _dispatcher2.default)
+	};
+	//stores
+	//default Singleton atom, dispatcher - can be overriden server-side
 
 /***/ },
 /* 163 */,
@@ -20177,7 +20178,8 @@
 	module.exports = {
 	  data: {
 	    contacts: [],
-	    detailContact: {}
+	    detailContact: {},
+	    me: null
 	  },
 	  ui: {
 	    contacts: {
@@ -20185,7 +20187,8 @@
 	      editErrors: {},
 	      lastListFetch: 0,
 	      lastDetailFetch: 0
-	    }
+	    },
+	    loginError: false
 	  },
 	  route: {
 	    page: 'contact_list'
@@ -20209,6 +20212,10 @@
 	var CONTACTS_DELETE = exports.CONTACTS_DELETE = 'CONTACTS:DELETE';
 	var ROUTE_SET = exports.ROUTE_SET = 'ROUTE:SET';
 	var NAVIGATE = exports.NAVIGATE = 'ROUTE:NAVIGATE';
+	var LOGIN = exports.LOGIN = 'USER:LOGIN';
+	var LOGOUT = exports.LOGOUT = 'USER:LOGOUT';
+	var AUTHORIZE = exports.AUTHORIZE = 'USER:AUTHORIZE';
+	var USER_SET_AUTH = exports.USER_SET_AUTH = 'USER:SET:AUTH';
 
 /***/ },
 /* 167 */
@@ -20973,6 +20980,10 @@
 	    dispatcher.emit(_action_types.CONTACTS_CREATE, { next: next });
 	  }
 
+	  function logout(next) {
+	    dispatcher.emit(_action_types.LOGOUT, { next: next });
+	  }
+
 	  function setPage(page) {
 	    //we use rest params because this setPage could be passed route parameters
 
@@ -20986,14 +20997,25 @@
 	    };
 	  }
 
+	  function authorize() {
+	    for (var _len2 = arguments.length, rest = Array(_len2), _key2 = 0; _key2 < _len2; _key2++) {
+	      rest[_key2] = arguments[_key2];
+	    }
+
+	    var next = Array.isArray(rest) ? rest[rest.length - 1] : noop;
+	    dispatcher.emit(_action_types.AUTHORIZE, { next: next });
+	  }
+
 	  return {
 	    //contacts
-	    '/contacts/create': [createContact, setPage('contact_create')],
+	    '/contacts/create': [authorize, createContact, setPage('contact_create')],
 	    '/contacts/:id': [loadContactById, setPage('contact_view')],
-	    '/contacts/:id/edit': [loadContactById, setPage('contact_edit')],
-	    '/contacts/:id/delete': [loadContactById, setPage('contact_delete')],
+	    '/contacts/:id/edit': [authorize, loadContactById, setPage('contact_edit')],
+	    '/contacts/:id/delete': [authorize, loadContactById, setPage('contact_delete')],
 	    '/contacts': [loadContacts, setPage('contact_list')],
 	    '/': [loadContacts, setPage('contact_list')],
+	    '/login': [setPage('login')],
+	    '/logout': [logout],
 	    //not found
 	    '*': [setPage('not_found')]
 	  };
@@ -22460,6 +22482,7 @@
 	  value: true
 	});
 	exports.navigate = navigate;
+	exports.login = login;
 
 	var _action_types = __webpack_require__(166);
 
@@ -22471,6 +22494,10 @@
 
 	function navigate(url) {
 	  _dispatcher2.default.emit(_action_types.NAVIGATE, { url: url });
+	}
+
+	function login(username, password) {
+	  _dispatcher2.default.emit(_action_types.LOGIN, { username: username, password: password });
 	}
 
 /***/ },
@@ -22742,6 +22769,10 @@
 
 	var _react2 = _interopRequireDefault(_react);
 
+	var _mori = __webpack_require__(89);
+
+	var _mori2 = _interopRequireDefault(_mori);
+
 	var _stores = __webpack_require__(162);
 
 	var _list = __webpack_require__(175);
@@ -22760,9 +22791,17 @@
 
 	var _delete2 = _interopRequireDefault(_delete);
 
+	var _link = __webpack_require__(182);
+
+	var _link2 = _interopRequireDefault(_link);
+
 	var _notfound = __webpack_require__(186);
 
 	var _notfound2 = _interopRequireDefault(_notfound);
+
+	var _login = __webpack_require__(188);
+
+	var _login2 = _interopRequireDefault(_login);
 
 	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -22799,7 +22838,7 @@
 	    }
 	  }, {
 	    key: 'getComponentForRoute',
-	    value: function getComponentForRoute(route) {
+	    value: function getComponentForRoute(route, loggedUser) {
 	      switch (route) {
 	        case 'contact_list':
 	          return _list2.default;
@@ -22808,24 +22847,50 @@
 	          return _view2.default;
 	          break;
 	        case 'contact_edit':
+	          if (!loggedUser) return _login2.default;
 	          return _edit2.default;
 	          break;
 	        case 'contact_create':
+	          if (!loggedUser) return _login2.default;
 	          return _edit2.default;
 	          break;
 	        case 'contact_delete':
+	          if (!loggedUser) return _login2.default;
 	          return _delete2.default;
+	          break;
+	        case 'login':
+	          return _login2.default;
 	          break;
 	        default:
 	          return _notfound2.default;
 	      }
 	    }
 	  }, {
+	    key: 'renderLogin',
+	    value: function renderLogin() {
+	      return _react2.default.createElement(
+	        _link2.default,
+	        { url: '/login' },
+	        'Sign in'
+	      );
+	    }
+	  }, {
+	    key: 'renderLogout',
+	    value: function renderLogout(loggedUser) {
+	      return _react2.default.createElement(
+	        _link2.default,
+	        { url: '/logout' },
+	        'Logout ',
+	        _mori2.default.get(loggedUser, 'username')
+	      );
+	    }
+	  }, {
 	    key: 'render',
 	    value: function render() {
 	      var state = this.props.atom.get();
 	      var route = _stores.RouteStore.getRoute(state);
-	      var Component = this.getComponentForRoute(route);
+	      var loggedUser = _stores.UserStore.getLoggedUser(state);
+	      var Component = this.getComponentForRoute(route, loggedUser);
 	      return _react2.default.createElement(
 	        'div',
 	        null,
@@ -22834,6 +22899,7 @@
 	          null,
 	          'Contacts'
 	        ),
+	        loggedUser ? this.renderLogout(loggedUser) : this.renderLogin(),
 	        _react2.default.createElement(Component, { state: state })
 	      );
 	    }
@@ -23609,6 +23675,211 @@
 	})(_react.Component);
 
 	exports.default = ContactDelete;
+
+/***/ },
+/* 188 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+
+	var _react = __webpack_require__(86);
+
+	var _react2 = _interopRequireDefault(_react);
+
+	var _actions = __webpack_require__(173);
+
+	var _stores = __webpack_require__(162);
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+	function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+	var Login = (function (_Component) {
+	  _inherits(Login, _Component);
+
+	  function Login(props) {
+	    _classCallCheck(this, Login);
+
+	    var _this = _possibleConstructorReturn(this, Object.getPrototypeOf(Login).call(this, props));
+
+	    _this.handleLogin = _this.handleLogin.bind(_this);
+	    return _this;
+	  }
+
+	  _createClass(Login, [{
+	    key: 'handleLogin',
+	    value: function handleLogin(e) {
+	      e.preventDefault();
+	      var username = this.refs.username.value,
+	          password = this.refs.password.value;
+	      console.log('Signing in user', username);
+	      (0, _actions.login)(username, password);
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      var loginError = _stores.UserStore.isLoginError(this.props.state);
+	      return _react2.default.createElement(
+	        'div',
+	        null,
+	        _react2.default.createElement(
+	          'h1',
+	          null,
+	          'Login'
+	        ),
+	        loginError ? _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'strong',
+	            null,
+	            'User / password not valid'
+	          )
+	        ) : null,
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          'Username',
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement('input', { type: 'text', name: 'username', ref: 'username', placeholder: 'Username' })
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          'Password',
+	          _react2.default.createElement('br', null),
+	          _react2.default.createElement('input', { type: 'password', name: 'password', ref: 'password' })
+	        ),
+	        _react2.default.createElement(
+	          'p',
+	          null,
+	          _react2.default.createElement(
+	            'button',
+	            { onClick: this.handleLogin },
+	            'Sign in'
+	          )
+	        )
+	      );
+	    }
+	  }]);
+
+	  return Login;
+	})(_react.Component);
+
+	exports.default = Login;
+
+/***/ },
+/* 189 */
+/***/ function(module, exports, __webpack_require__) {
+
+	'use strict';
+
+	Object.defineProperty(exports, "__esModule", {
+	  value: true
+	});
+	exports.default = UserStoreFactory;
+
+	var _mori = __webpack_require__(89);
+
+	var _mori2 = _interopRequireDefault(_mori);
+
+	var _action_types = __webpack_require__(166);
+
+	var ActionTypes = _interopRequireWildcard(_action_types);
+
+	var _actions = __webpack_require__(173);
+
+	var _httpApi = __webpack_require__(169);
+
+	var _httpApi2 = _interopRequireDefault(_httpApi);
+
+	function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
+
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+	function UserStoreFactory(atom, dispatcher) {
+	  var p = {
+	    me: ['data', 'me'],
+	    loginError: ['ui', 'loginError']
+	  };
+
+	  function login(_ref) {
+	    var username = _ref.username;
+	    var password = _ref.password;
+
+	    _httpApi2.default.postClj('/session', { username: username, password: password }).then(function (user) {
+	      atom.set(p.loginError, false, { silent: true });
+	      atom.set(p.me, user);
+	      //navigate('/contacts');
+	    }).catch(function (err) {
+	      console.log('Login err');
+	      atom.set(p.loginError, true);
+	    });
+	  }
+
+	  function logout(_ref2) {
+	    var next = _ref2.next;
+
+	    _httpApi2.default.del('/session').then(function () {
+	      atom.set(p.me, null, { silent: true });
+	      (0, _actions.navigate)('/');
+	      next();
+	    }).catch(function (err) {
+	      console.log('Error in logout', err);
+	      next();
+	    });
+	  }
+
+	  function authorize(_ref3) {
+	    var next = _ref3.next;
+
+	    if (atom.getIn(p.me) !== null) return next();
+	    _httpApi2.default.getClj('/session').then(function (user) {
+	      console.log('Authorize. Me:', user.toString());
+	      atom.set(p.me, user);
+	      next();
+	    }).catch(function (err) {
+	      console.log('Auth error');
+	      //navigate('/login');
+	      next();
+	    });
+	  }
+
+	  function saveAuth(_ref4) {
+	    var user = _ref4.user;
+
+	    atom.set(p.me, _mori2.default.toClj(user), { silent: true });
+	  }
+
+	  function getLoggedUser(state) {
+	    return _mori2.default.getIn(state, p.me);
+	  }
+
+	  function isLoginError(state) {
+	    return _mori2.default.getIn(state, p.loginError);
+	  }
+
+	  dispatcher.listen(ActionTypes.LOGIN, login);
+	  dispatcher.listen(ActionTypes.LOGOUT, logout);
+	  dispatcher.listen(ActionTypes.AUTHORIZE, authorize);
+	  dispatcher.listen(ActionTypes.USER_SET_AUTH, saveAuth);
+
+	  return {
+	    selectors: p,
+	    getLoggedUser: getLoggedUser,
+	    isLoginError: isLoginError
+	  };
+	}
 
 /***/ }
 /******/ ]);
