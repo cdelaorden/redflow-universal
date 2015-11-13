@@ -20,6 +20,15 @@ class Atom {
 
   }
 
+  assocIn(keyPath, val, options){
+    return this.set(keyPath, val, options);
+  }
+
+  updateIn(keyPath, fn){
+    return this.set(keyPath, fn, options)
+  }
+
+  //Serves both as assocIn and updateIn
   set(keyPath, val, options = { silent: false }){
     if(typeof(val)==='function'){
       this.__state = m.updateIn(this.__state, keyPath, val);
